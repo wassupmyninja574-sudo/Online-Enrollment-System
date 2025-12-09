@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Enrollment — Online Enrollment System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+  <main class="card highlight" role="main">
+      <h1>Basic Education Enrollment</h1>
+      <p class="lead">Complete the form below to submit an enrollment request. Fields marked with * are required.</p>
+
+      <form id="enrollForm" novalidate>
+        <fieldset>
+          <legend>School Information</legend>
+          <div class="grid">
+            <div class="col-6">
+              <label for="schoolYear">School Year *</label>
+              <input id="schoolYear" name="schoolYear" type="text" placeholder="e.g. 2025-2026" required>
+            </div>
+            <div class="col-6">
+              <label for="lrn">LRN (if any)</label>
+              <input id="lrn" name="lrn" type="text" inputmode="numeric" pattern="\d*" placeholder="Learner Reference Number">
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Grade Level to Enroll</legend>
+          <div class="checkbox-row">
+            <label><input type="checkbox" name="enrollType" value="graded"> Graded</label>
+            <label><input type="checkbox" name="enrollType" value="non-graded"> Non-Graded (SNED)</label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Learner's Personal Information</legend>
+          <div class="grid">
+            <div class="col-4">
+              <label for="lastName">Last Name *</label>
+              <input id="lastName" name="lastName" type="text" required>
+            </div>
+            <div class="col-4">
+              <label for="firstName">First Name *</label>
+              <input id="firstName" name="firstName" type="text" required>
+            </div>
+            <div class="col-4">
+              <label for="middleName">Middle Name</label>
+              <input id="middleName" name="middleName" type="text">
+            </div>
+
+            <div class="col-4">
+              <label for="birthdate">Birthdate *</label>
+              <input id="birthdate" name="birthdate" type="date" required>
+            </div>
+            <div class="col-3">
+              <label for="age">Age</label>
+              <input id="age" name="age" type="number" min="0" readonly>
+            </div>
+            <div class="col-5">
+              <label for="sex">Sex</label>
+              <select id="sex" name="sex">
+                <option value="">Select...</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other / Prefer not to say</option>
+              </select>
+            </div>
+
+            <div class="full">
+              <label for="religion">Religion</label>
+              <input id="religion" name="religion" type="text">
+            </div>
+
+            <div class="col-6">
+              <label for="gmail">Gmail Address</label>
+              <input id="gmail" name="gmail" type="email" placeholder="your.email@gmail.com">
+            </div>
+
+            <div class="col-6">
+              <label for="indigenous">Indigenous Community?</label>
+              <select id="indigenous" name="indigenous"><option>No</option><option>Yes</option></select>
+            </div>
+            <div class="col-6">
+              <label for="fourPs">4Ps Beneficiary?</label>
+              <select id="fourPs" name="fourPs"><option>No</option><option>Yes</option></select>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Parent / Guardian Information</legend>
+          <div class="grid">
+            <div class="col-6">
+              <label for="father">Father's Name</label>
+              <input id="father" name="father" type="text">
+            </div>
+            <div class="col-6">
+              <label for="mother">Mother's Maiden Name</label>
+              <input id="mother" name="mother" type="text">
+            </div>
+            <div class="full">
+              <label for="guardian">Legal Guardian</label>
+              <input id="guardian" name="guardian" type="text">
+            </div>
+          </div>
+        </fieldset>
+
+        <div class="actions">
+          <button type="submit" class="primary">Submit Enrollment</button>
+          <button type="button" class="secondary" id="resetBtn">Reset</button>
+        </div>
+      </form>
+
+        <!-- Delivery panel: shown after form submit -->
+        <div id="deliveryPanel" class="delivery-panel" role="status" aria-live="polite">
+          <div class="spinner" aria-hidden="true"></div>
+          <div>
+            <div class="msg">Enrollment form has been sent.</div>
+            <div class="sub">Wait for the result — we'll notify you when it's processed.</div>
+          </div>
+        </div>
+    </main>
+
+    <script>
+      // Small client-side helpers: age calculation, basic validation UX
+      (function(){
+        const form = document.getElementById('enrollForm');
+        const birth = document.getElementById('birthdate');
+        const age = document.getElementById('age');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function computeAge(d){
+          if(!d) return '';
+          const b = new Date(d);
+          if(isNaN(b)) return '';
+          const today = new Date();
+          let a = today.getFullYear() - b.getFullYear();
+          const m = today.getMonth() - b.getMonth();
+          if(m < 0 || (m === 0 && today.getDate() < b.getDate())) a--;
+          return a >= 0 ? a : '';
+        }
+
+        birth.addEventListener('change', ()=>{ age.value = computeAge(birth.value); });
+
+        // Ensure a learner profile exists in sessionStorage before allowing the form.
+        (function ensureProfile(){
+          try{
+            const raw = sessionStorage.getItem('learnerProfile');
+            if(!raw){
+              // redirect to profiling page to collect required profile
+              window.location.href = 'profiling.html';
+              return;
+            }
+            const p = JSON.parse(raw);
+            if(p && (p.lastName || p.firstName)){
+              // prefill main form
+              if(p.lastName) document.getElementById('lastName').value = p.lastName;
+              if(p.firstName) document.getElementById('firstName').value = p.firstName;
+              if(p.lrn) document.getElementById('lrn').value = p.lrn;
+              if(p.birthdate) document.getElementById('birthdate').value = p.birthdate;
+              if(p.sex) document.getElementById('sex').value = p.sex;
+              age.value = computeAge(p.birthdate || document.getElementById('birthdate').value);
+            } else {
+              // invalid profile — clear and redirect
+              sessionStorage.removeItem('learnerProfile');
+              window.location.href = 'profiling.html';
+            }
+          }catch(err){
+            sessionStorage.removeItem('learnerProfile');
+            window.location.href = 'profiling.html';
+          }
+        })();
+
+        const deliveryPanel = document.getElementById('deliveryPanel');
+
+        function disableFormInputs(){
+          const els = form.querySelectorAll('input, select, textarea, button');
+          els.forEach(el => { el.disabled = true; });
+          form.classList.add('disabled');
+        }
+
+        function enableFormInputs(){
+          const els = form.querySelectorAll('input, select, textarea, button');
+          els.forEach(el => { el.disabled = false; });
+          form.classList.remove('disabled');
+        }
+
+        form.addEventListener('submit', function(e){
+          if(!form.checkValidity()){
+            e.preventDefault();
+            form.reportValidity();
+            return false;
+          }
+          e.preventDefault();
+
+          // show delivery panel and disable form while 'delivering'
+          if(deliveryPanel){
+            deliveryPanel.classList.add('show');
+            deliveryPanel.querySelector('.msg').textContent = 'Enrollment form has been sent.';
+            deliveryPanel.querySelector('.sub').textContent = 'Wait for the result — we\'ll notify you when it\'s processed.';
+            deliveryPanel.focus?.();
+          }
+          disableFormInputs();
+
+          // store a demo copy locally (for preview/testing)
+          try{
+            const data = {};
+            new FormData(form).forEach((v,k)=> data[k]=v);
+            console.log('Form data captured:', data);
+            const enrollmentEntry = {
+              data: data,
+              sentAt: new Date().toISOString(),
+              status: 'pending'
+            };
+            console.log('Enrollment entry to save:', enrollmentEntry);
+            sessionStorage.setItem('lastEnrollment', JSON.stringify(enrollmentEntry));
+          }catch(err){
+            console.error('Error saving enrollment:', err);
+          }
+
+          // redirect to respond.html after a brief delay to show delivery panel
+          setTimeout(()=>{ window.location.href = 'respond.html'; }, 1800);
+        });
+
+        resetBtn.addEventListener('click', ()=> form.reset());
+      })();
+    </script>
+  </body>
+</html>
