@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Learner Profiling — Online Enrollment System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+      /* Small adjustments so the profiling page looks like the modal but full page */
+      body{align-items:center; padding:40px}
+      main{max-width:920px}
+      .profile-card{padding:22px}
+      .note{color:rgba(255,255,255,0.72); margin-bottom:12px}
+    </style>
+  </head>
+  <body>
+    <main class="card highlight profile-card" role="main">
+      <h1>Learner Profiling</h1>
+      <p class="lead note">This step is required before you can proceed to the enrollment form. The profile will prefill the enrollment fields.</p>
+
+      <form id="profileForm">
+        <div class="grid">
+          <div class="col-4">
+            <label for="last">Last Name *</label>
+            <input id="last" name="last" type="text" required>
+          </div>
+          <div class="col-4">
+            <label for="first">First Name *</label>
+            <input id="first" name="first" type="text" required>
+          </div>
+          <div class="col-4">
+            <label for="lrn">LRN</label>
+            <input id="lrn" name="lrn" type="text" inputmode="numeric" placeholder="optional">
+          </div>
+
+          <div class="col-6">
+            <label for="birth">Birthdate *</label>
+            <input id="birth" name="birth" type="date" required>
+          </div>
+          <div class="col-6">
+            <label for="sex">Sex</label>
+            <select id="sex" name="sex"><option value="">Select...</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="saveProfile" class="primary">Save Profile & Continue</button>
+          <button id="clearProfile" type="button" class="secondary">Clear</button>
+        </div>
+      </form>
+
+      <p style="margin-top:14px; color:rgba(255,255,255,0.6)">Tip: You can update profile later from the enrollment page by clearing stored profile data.</p>
+
+      <!-- Admin area link -->
+      <section style="margin-top:18px">
+        <a href="admin.html" style="text-decoration:none"><button class="secondary" style="width:220px">Admin Dashboard</button></a>
+      </section>
+    </main>
+
+    <script>
+      (function(){
+        // Initialize default admin account
+        async function initDefaultAdmin(){
+          const existing = localStorage.getItem('adminAccount');
+          if(!existing){
+            const enc = new TextEncoder();
+            const data = enc.encode('wakelet');
+            const hash = await crypto.subtle.digest('SHA-256', data);
+            const bytes = new Uint8Array(hash);
+            const hashHex = Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+            const adminObj = {
+              email: 'jhonandreynavarra@gmail.com',
+              hash: hashHex,
+              codeUsed: false,
+              createdAt: new Date().toISOString()
+            };
+            localStorage.setItem('adminAccount', JSON.stringify(adminObj));
+          }
+        }
+        initDefaultAdmin();
+
+        const form = document.getElementById('profileForm');
+        const last = document.getElementById('last');
+        const first = document.getElementById('first');
+        const lrn = document.getElementById('lrn');
+        const birth = document.getElementById('birth');
+        const sex = document.getElementById('sex');
+        const saveBtn = document.getElementById('saveProfile');
+        const clearBtn = document.getElementById('clearProfile');
+
+        function computeAge(d){
+          if(!d) return '';
+          const b = new Date(d);
+          if(isNaN(b)) return '';
+          const today = new Date();
+          let a = today.getFullYear() - b.getFullYear();
+          const m = today.getMonth() - b.getMonth();
+          if(m < 0 || (m === 0 && today.getDate() < b.getDate())) a--;
+          return a >= 0 ? a : '';
+        }
+
+        // Load existing profile if present
+        try{
+          const raw = sessionStorage.getItem('learnerProfile');
+          if(raw){
+            const p = JSON.parse(raw);
+            if(p){
+              last.value = p.lastName || '';
+              first.value = p.firstName || '';
+              lrn.value = p.lrn || '';
+              birth.value = p.birthdate || '';
+              sex.value = p.sex || '';
+            }
+          }
+        }catch(e){ /* ignore */ }
+
+        saveBtn.addEventListener('click', function(e){
+          e.preventDefault();
+          if(!last.value.trim() || !first.value.trim() || !birth.value){
+            alert('Please fill required fields: Last name, First name, Birthdate.');
+            return;
+          }
+          const profile = {
+            lastName: last.value.trim(),
+            firstName: first.value.trim(),
+            lrn: lrn.value.trim(),
+            birthdate: birth.value,
+            sex: sex.value || ''
+          };
+          sessionStorage.setItem('learnerProfile', JSON.stringify(profile));
+          // go back to enrollment page
+          window.location.href = 'enrollment.html';
+        });
+
+        clearBtn.addEventListener('click', function(){
+          last.value = '';
+          first.value = '';
+          lrn.value = '';
+          birth.value = '';
+          sex.value = '';
+          last.focus();
+        });
+      })();
+    </script>
+  </body>
+</html>

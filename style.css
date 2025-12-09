@@ -1,0 +1,108 @@
+/* Futuristic cybernautic theme for the enrollment UI
+	- Neon gradients, glass surfaces, animated depth and subtle grid
+	- Designed for `enrollment.html` and `profiling.html` to share the same look
+*/
+:root{
+	--bg-1: #020316; /* deep */
+	--bg-2: #07122a; /* gradient */
+	--card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+	--glass-border: rgba(255,255,255,0.04);
+	--accent-cyan: #00f5ff;
+	--accent-magenta: #ff2d95;
+	--accent-purple: #8b5cf6;
+	--muted: rgba(255,255,255,0.72);
+	--radius: 12px;
+	--max-width: 980px;
+	--grid-size: 56px;
+}
+/* Base layout */
+html,body{height:100%}
+body{
+	margin:0; padding:28px; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+	background: radial-gradient(800px 360px at 10% 15%, rgba(139,92,246,0.08), transparent 8%),
+							radial-gradient(700px 300px at 92% 80%, rgba(0,245,255,0.06), transparent 10%),
+							linear-gradient(180deg, var(--bg-1), var(--bg-2));
+	color:#eaf6ff; display:flex; align-items:flex-start; justify-content:center; overflow-y:auto;
+}
+/* subtle holographic grid */
+body::before{
+	content:""; position:fixed; inset:0; pointer-events:none; mix-blend-mode:overlay;
+	background-image: linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.01) 1px, transparent 1px);
+	background-size: var(--grid-size) var(--grid-size), var(--grid-size) var(--grid-size); opacity:0.9;
+	transform-origin:center; animation: gridShift 36s linear infinite;
+}
+/* Card */
+.card{
+	width:100%; max-width:var(--max-width); background:var(--card-bg); border-radius:var(--radius);
+	padding:26px; box-sizing:border-box; position:relative; border:1px solid var(--glass-border);
+	box-shadow: 0 16px 60px rgba(2,6,23,0.6), 0 2px 8px rgba(0,0,0,0.6);
+	backdrop-filter: blur(8px) saturate(1.1);
+}
+.card::after{
+	content:""; position:absolute; inset:-2px; border-radius:calc(var(--radius) + 2px);
+	background: linear-gradient(90deg, rgba(0,245,255,0.06), rgba(139,92,246,0.04)); filter:blur(10px); z-index:-1; pointer-events:none;
+}
+h1{font-size:1.25rem; margin:0 0 8px 0; color:#e7f7ff}
+.lead{color:var(--muted); margin:0 0 16px 0}
+
+/* Form grid */
+form{display:grid; gap:18px}
+fieldset{border:1px solid rgba(255,255,255,0.03); padding:14px; border-radius:8px; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));}
+legend{font-weight:700; color:#dbeefe}
+
+.grid{display:grid; grid-template-columns:repeat(12,1fr); gap:12px}
+.col-6{grid-column:span 6}
+.col-4{grid-column:span 4}
+.col-3{grid-column:span 3}
+.full{grid-column:span 12}
+
+label{display:block; font-size:0.88rem; color:var(--muted); margin-bottom:6px}
+input[type="text"], input[type="date"], input[type="number"], select, textarea{
+	width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.05); box-sizing:border-box;
+	background: rgba(4,8,18,0.45); color:#e9fbff; font-size:0.95rem; transition:box-shadow .16s ease, transform .12s ease;
+}
+input::placeholder{color:rgba(230,238,248,0.38)}
+
+input:focus, select:focus, textarea:focus{
+	outline: none; border-color: rgba(0,245,255,0.85);
+	box-shadow: 0 6px 30px rgba(0,245,255,0.06), 0 0 12px rgba(139,92,246,0.03) inset;
+	transform: translateY(-1px);
+}
+.checkbox-row{display:flex; gap:14px; align-items:center}
+.checkbox-row label{display:flex; gap:10px; align-items:center; color:#eafcff}
+.checkbox-row input{width:18px; height:18px}
+
+.actions{display:flex; gap:12px; margin-top:6px}
+button.primary{background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple)); color:#041027; border:0; padding:10px 18px; border-radius:12px; cursor:pointer; font-weight:700; box-shadow: 0 10px 30px rgba(0,245,255,0.06);}
+button.primary:hover{filter:brightness(1.06); transform:translateY(-2px)}
+button.secondary{background:transparent; border:1px solid rgba(255,255,255,0.06); color:var(--muted); padding:10px 14px; border-radius:10px}
+
+/* Highlight (spotlight) */
+.card.highlight{ animation: highlightPulse 4s ease-in-out infinite; box-shadow: 0 28px 80px rgba(0,18,40,0.7), 0 6px 30px rgba(0,245,255,0.06);}
+.card.highlight::before{content:""; position:absolute; inset:-28px; border-radius:calc(var(--radius) + 28px); background: radial-gradient(closest-side at 18% 18%, rgba(0,245,255,0.12), transparent 12%), radial-gradient(closest-side at 82% 82%, rgba(139,92,246,0.08), transparent 12%); filter: blur(18px); z-index:-2;}
+@keyframes highlightPulse{0%{transform:translateY(-2px) scale(1)}50%{transform:translateY(-6px) scale(1.004)}100%{transform:translateY(-2px) scale(1)}}
+
+/* Small common utilities */
+@media (max-width:720px){.col-6,.col-4,.col-3,.full{grid-column:span 12}.card{padding:18px}}
+
+/* Accessibility */
+*:focus{outline:2px solid rgba(0,245,255,0.12); outline-offset:3px}
+@media (prefers-reduced-motion: reduce){body::before, .card, .card::before, .card::after, .card.highlight{animation:none}}
+
+/* Profile small tweaks */
+.profile-card{padding:22px}
+
+/* Developer helper - make debugging easier */
+.debug-badge{position:fixed; right:18px; bottom:18px; background:rgba(0,0,0,0.36); color:#aeefff; padding:6px 10px; border-radius:8px; font-size:12px}
+
+/* Delivery panel shown after enrollment submit */
+.delivery-panel{
+	margin-top:18px; padding:16px; border-radius:10px; background:linear-gradient(180deg, rgba(0,10,20,0.36), rgba(0,0,0,0.28));
+	border:1px solid rgba(255,255,255,0.04); color:#e7fbff; display:none; align-items:center; gap:12px;
+}
+.delivery-panel.show{display:flex}
+.delivery-panel .msg{font-weight:700}
+.delivery-panel .sub{color:rgba(230,245,255,0.7); font-size:0.95rem}
+.spinner{width:18px; height:18px; border-radius:50%; border:3px solid rgba(255,255,255,0.08); border-top-color:var(--accent-cyan); animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+

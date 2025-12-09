@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Enrollment Response — Online Enrollment System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+      .response-grid{display:grid; grid-template-columns:1fr 360px; gap:18px}
+      @media (max-width:880px){ .response-grid{grid-template-columns:1fr} }
+      .details pre{white-space:pre-wrap; word-break:break-word; background:transparent; border-radius:8px}
+      .meta{color:rgba(230,245,255,0.7); font-size:0.95rem}
+      .actions-row{display:flex; gap:10px; margin-top:12px}
+    </style>
+  </head>
+  <body>
+    <main class="card highlight" role="main">
+      <h1>Enrollment Submission Received</h1>
+      <p class="lead">Thank you — your enrollment request was sent. Please wait for processing.</p>
+
+      <div class="response-grid">
+        <section class="details">
+          <h2 style="margin:6px 0 8px 0; color:#dffcff">Submission Details</h2>
+          <div id="noData" class="meta" style="display:none">No submission found. You can go back to the enrollment form to submit one.</div>
+          <div id="dataArea" style="display:none">
+            <div class="meta">Sent at: <span id="sentAt"></span></div>
+            <div style="margin-top:10px">
+              <table style="width:100%; border-collapse:collapse">
+                <tbody id="kv"></tbody>
+              </table>
+            </div>
+            <div class="actions-row">
+              <button id="backBtn" class="secondary">Back to Enrollment</button>
+              <button id="clearBtn" class="secondary">Clear Submission</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="status" style="align-self:start">
+          <div style="display:flex; gap:12px; align-items:center">
+            <div class="spinner" aria-hidden="true" style="width:26px; height:26px; border-width:3px"></div>
+            <div>
+              <div style="font-weight:700">Enrollment form has been sent.</div>
+              <div class="sub" style="color:rgba(230,245,255,0.75)">Wait for the result — check back later for updates.</div>
+            </div>
+          </div>
+
+          <div style="margin-top:16px">
+            <div style="font-weight:700; margin-bottom:8px">Processing Status</div>
+            <div id="procStatus" class="meta">Queued</div>
+            <div style="margin-top:12px;" class="actions-row">
+              <button id="simulateProcess" class="primary">Simulate Process</button>
+              <button id="viewProfile" class="secondary">View Learner Profile</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+    </main>
+
+    <script>
+      (function(){
+        const raw = sessionStorage.getItem('lastEnrollment');
+        const dataArea = document.getElementById('dataArea');
+        const noData = document.getElementById('noData');
+        const sentAt = document.getElementById('sentAt');
+        const kv = document.getElementById('kv');
+        const backBtn = document.getElementById('backBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const procStatus = document.getElementById('procStatus');
+        const simulate = document.getElementById('simulateProcess');
+        const viewProfile = document.getElementById('viewProfile');
+
+        function renderKeyValue(obj){
+          kv.innerHTML = '';
+          const keys = Object.keys(obj).sort();
+          keys.forEach(k => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
+            const td1 = document.createElement('td'); td1.style.padding='8px 6px'; td1.style.width='40%'; td1.style.color='rgba(230,245,255,0.82)'; td1.textContent = k;
+            const td2 = document.createElement('td'); td2.style.padding='8px 6px'; td2.textContent = obj[k] || '—';
+            tr.appendChild(td1); tr.appendChild(td2); kv.appendChild(tr);
+          });
+        }
+
+        if(!raw){
+          noData.style.display = 'block'; dataArea.style.display = 'none'; procStatus.textContent = 'No submission';
+        } else {
+          try{
+            const entry = JSON.parse(raw);
+            console.log('Entry from sessionStorage:', entry);
+            const info = entry.data || {};
+            console.log('Form info to display:', info);
+            dataArea.style.display = 'block'; noData.style.display = 'none';
+            sentAt.textContent = new Date(entry.sentAt).toLocaleString();
+            renderKeyValue(info);
+            // default proc status: queued
+            procStatus.textContent = (entry.status || 'Queued');
+
+            // Save to admin enrollments list
+            const enrollments = JSON.parse(localStorage.getItem('enrollments') || '[]');
+            const exists = enrollments.some(e => e.sentAt === entry.sentAt);
+            if(!exists){
+                // Normalize data keys so admin dashboard can read names/emails reliably
+                const profileFallback = (()=>{
+                  try{ return JSON.parse(sessionStorage.getItem('learnerProfile')||'null') }catch(e){return null}
+                })();
+                const normalized = Object.assign({}, info);
+                normalized.firstName = info.firstName || info.first || (profileFallback && profileFallback.firstName) || '';
+                normalized.lastName = info.lastName || info.last || (profileFallback && profileFallback.lastName) || '';
+                normalized.gmail = info.gmail || info.schoolEmail || info.email || '';
+
+                const enrollmentRecord = {
+                  data: normalized,
+                  sentAt: entry.sentAt,
+                  status: 'pending'
+                };
+              console.log('Saving to localStorage:', enrollmentRecord);
+              enrollments.push(enrollmentRecord);
+              localStorage.setItem('enrollments', JSON.stringify(enrollments));
+              console.log('All enrollments in localStorage:', enrollments);
+            }
+          }catch(e){ 
+            console.error('Error processing enrollment:', e);
+            noData.style.display='block'; 
+            dataArea.style.display='none'; 
+            procStatus.textContent='Invalid'; 
+          }
+        }
+
+        backBtn.addEventListener('click', ()=>{ window.location.href = 'enrollment.html'; });
+        clearBtn.addEventListener('click', ()=>{ sessionStorage.removeItem('lastEnrollment'); location.reload(); });
+
+        simulate.addEventListener('click', ()=>{
+          procStatus.textContent = 'Processing...';
+          setTimeout(()=>{ procStatus.textContent = 'Processed'; alert('Demo: enrollment processing completed.'); }, 2500);
+        });
+
+        viewProfile.addEventListener('click', ()=>{ window.location.href = 'profiling.html'; });
+      })();
+    </script>
+  </body>
+</html>

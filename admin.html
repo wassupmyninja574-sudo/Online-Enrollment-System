@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Dashboard — Online Enrollment System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+      .login-area, .dashboard{padding:20px}
+      .login-form{max-width:420px; margin:0 auto}
+      .login-form input{margin-bottom:12px}
+      .enrollment-table{width:100%; border-collapse:collapse; margin-top:12px}
+      .enrollment-table th, .enrollment-table td{padding:10px; text-align:left; border-bottom:1px solid rgba(255,255,255,0.04)}
+      .enrollment-table th{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); font-weight:700}
+      .enrollment-table tbody tr:hover{background:rgba(0,245,255,0.04); cursor:pointer}
+      .status-badge{display:inline-block; padding:3px 8px; border-radius:6px; font-size:0.85rem; font-weight:600}
+      .status-pending{background:rgba(255,193,7,0.12); color:#ffc107}
+      .status-accepted{background:rgba(76,175,80,0.12); color:#4caf50}
+      .status-rejected{background:rgba(244,67,54,0.12); color:#f44336}
+      .action-buttons{display:flex; gap:6px}
+      .action-buttons button{padding:4px 10px; font-size:0.85rem; border-radius:6px}
+      .logout-btn{margin-top:12px}
+      
+      /* Enrollment Details Panel */
+      .detail-panel{position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:9999}
+      .detail-panel.show{display:flex}
+      .detail-container{background:linear-gradient(180deg, rgba(11,27,51,0.95), rgba(6,15,28,0.98)); border:1px solid rgba(0,245,255,0.15); border-radius:12px; padding:24px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 0 30px rgba(0,245,255,0.2)}
+      .detail-container h2{color:#00f5ff; margin-top:0; margin-bottom:16px}
+      .detail-row{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:12px}
+      .detail-field{padding:10px; background:rgba(255,255,255,0.02); border-left:2px solid rgba(0,245,255,0.5); border-radius:4px}
+      .detail-label{font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; color:#00f5ff; margin-bottom:4px; display:block}
+      .detail-value{color:#ffffff; font-size:0.95rem}
+      .detail-actions{display:flex; gap:8px; margin-top:20px; padding-top:16px; border-top:1px solid rgba(0,245,255,0.15)}
+      .detail-actions button{flex:1; padding:10px 16px; font-size:0.9rem; border-radius:6px}
+      .detail-close{position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#ffffff; width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:1.2rem}
+    </style>
+  </head>
+  <body>
+    <main class="card highlight" role="main">
+      <!-- Login section -->
+      <div id="loginArea" class="login-area">
+        <h1>Admin Login</h1>
+        <p class="lead">Enter your credentials to manage enrollments.</p>
+        <form id="loginForm" class="login-form">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="text" placeholder="admin email" required>
+          <label for="loginPass">Password</label>
+          <input id="loginPass" type="password" placeholder="password" required>
+          <button type="submit" class="primary" style="width:100%; margin-top:12px">Login</button>
+        </form>
+      </div>
+
+      <!-- Dashboard section (hidden by default) -->
+      <div id="dashArea" class="dashboard" style="display:none">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+          <div>
+            <h1>Admin Dashboard</h1>
+            <p class="lead" style="margin:0">Manage pending enrollment requests.</p>
+          </div>
+          <button id="logoutBtn" class="secondary logout-btn">Logout</button>
+        </div>
+
+        <h2 style="margin-top:18px; color:#dffcff">Pending Enrollments</h2>
+        <div id="noEnroll" class="meta">No pending enrollments at this time.</div>
+        <table id="enrollTable" class="enrollment-table" style="display:none">
+          <thead>
+            <tr>
+              <th>Learner Name</th>
+              <th>Gmail</th>
+              <th>Birthdate</th>
+              <th>Submitted</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="enrollBody"></tbody>
+        </table>
+
+        <h2 style="margin-top:24px; color:#dffcff">Enrollment History</h2>
+        <table id="historyTable" class="enrollment-table">
+          <thead>
+            <tr>
+              <th>Learner Name</th>
+              <th>Status</th>
+              <th>Decision Date</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"><tr><td colspan="4" class="meta">No history yet.</td></tr></tbody>
+        </table>
+      </div>
+    </main>
+
+    <!-- Enrollment Details Panel (Modal) -->
+    <div id="detailPanel" class="detail-panel">
+      <div class="detail-container">
+        <button class="detail-close" onclick="closeDetail()">&times;</button>
+        <h2>Enrollment Form Details</h2>
+        <div id="detailContent"></div>
+      </div>
+    </div>
+
+    <script>
+      (function(){
+        const loginArea = document.getElementById('loginArea');
+        const dashArea = document.getElementById('dashArea');
+        const loginForm = document.getElementById('loginForm');
+        const loginEmail = document.getElementById('loginEmail');
+        const loginPass = document.getElementById('loginPass');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const noEnroll = document.getElementById('noEnroll');
+        const enrollTable = document.getElementById('enrollTable');
+        const enrollBody = document.getElementById('enrollBody');
+        const historyBody = document.getElementById('historyBody');
+        const detailPanel = document.getElementById('detailPanel');
+        const detailContent = document.getElementById('detailContent');
+        let currentDetailIndex = null;
+
+        // Helper: hash password with SHA-256
+        async function sha256Hex(message){
+          const enc = new TextEncoder();
+          const data = enc.encode(message);
+          const hash = await crypto.subtle.digest('SHA-256', data);
+          const bytes = new Uint8Array(hash);
+          return Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+        }
+
+        // Load pending enrollments from localStorage
+        function loadEnrollments(){
+          const all = JSON.parse(localStorage.getItem('enrollments') || '[]');
+          return all;
+        }
+
+        // Save enrollments to localStorage
+        function saveEnrollments(arr){
+          localStorage.setItem('enrollments', JSON.stringify(arr));
+        }
+
+        // Render pending and history tables
+        function renderTables(){
+          const all = loadEnrollments();
+          console.log('All enrollments loaded:', all);
+          const pending = all.filter(e => !e.status || e.status === 'pending');
+          console.log('Pending enrollments:', pending);
+          const decided = all.filter(e => e.status && e.status !== 'pending');
+
+          // Render pending
+          if(pending.length === 0){
+            noEnroll.style.display = 'block';
+            enrollTable.style.display = 'none';
+          } else {
+            noEnroll.style.display = 'none';
+            enrollTable.style.display = 'table';
+            enrollBody.innerHTML = '';
+            pending.forEach((e, idx) => {
+              const tr = document.createElement('tr');
+              console.log('Processing enrollment:', e);
+                // Robust name extraction supporting multiple possible keys
+                const first = e.data?.firstName || e.data?.first || e.data?.fname || '';
+                const last = e.data?.lastName || e.data?.last || e.data?.lname || '';
+                const name = [first, last].filter(Boolean).join(' ');
+                const gmail = e.data?.gmail || e.data?.schoolEmail || e.data?.email || '(no gmail)';
+                const displayName = name.trim() || (e.data?.fullName || e.data?.name || '(unknown)');
+              console.log('Extracted name:', name, 'gmail:', gmail);
+              const birth = e.data?.birthdate || '—';
+              const sent = new Date(e.sentAt).toLocaleDateString();
+              tr.style.cursor = 'pointer';
+              tr.innerHTML = `
+                <td>${displayName}</td>
+                <td>${gmail}</td>
+                <td>${birth}</td>
+                <td>${sent}</td>
+                <td><span class="status-badge status-pending">Pending</span></td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="primary" onclick="acceptEnroll(${idx}); event.stopPropagation();">Accept</button>
+                    <button class="secondary" onclick="rejectEnroll(${idx}); event.stopPropagation();">Reject</button>
+                  </div>
+                </td>
+              `;
+              tr.addEventListener('click', () => openDetail(e, idx));
+              enrollBody.appendChild(tr);
+            });
+          }
+
+          // Render history
+          if(decided.length === 0){
+            historyBody.innerHTML = '<tr><td colspan="4" class="meta">No history yet.</td></tr>';
+          } else {
+            historyBody.innerHTML = '';
+            decided.forEach(e => {
+              const tr = document.createElement('tr');
+              const first = e.data?.firstName || e.data?.first || e.data?.fname || '';
+              const last = e.data?.lastName || e.data?.last || e.data?.lname || '';
+              const displayName = [first, last].filter(Boolean).join(' ') || (e.data?.fullName || e.data?.name || '(unknown)');
+              const status = e.status === 'accepted' ? 'Accepted' : 'Rejected';
+              const statusClass = e.status === 'accepted' ? 'status-accepted' : 'status-rejected';
+              const date = e.decidedAt ? new Date(e.decidedAt).toLocaleDateString() : '—';
+              const notes = e.notes || '—';
+              tr.innerHTML = `
+                <td>${displayName}</td>
+                <td><span class="status-badge ${statusClass}">${status}</span></td>
+                <td>${date}</td>
+                <td>${notes}</td>
+              `;
+              historyBody.appendChild(tr);
+            });
+          }
+        }
+
+        // Make accept/reject functions global so onclick works
+        window.acceptEnroll = function(idx){
+          const all = loadEnrollments();
+          const pending = all.filter(e => !e.status || e.status === 'pending');
+          if(pending[idx]){
+            const e = pending[idx];
+            e.status = 'accepted';
+            e.decidedAt = new Date().toISOString();
+            e.notes = 'Approved by admin.';
+            const allIdx = all.indexOf(e);
+            all[allIdx] = e;
+            saveEnrollments(all);
+            renderTables();
+            closeDetail();
+            alert(`Enrollment for ${e.data?.firstName || 'Learner'} accepted.`);
+          }
+        };
+
+        window.rejectEnroll = function(idx){
+          const all = loadEnrollments();
+          const pending = all.filter(e => !e.status || e.status === 'pending');
+          if(pending[idx]){
+            const reason = prompt('Rejection reason (optional):');
+            const e = pending[idx];
+            const allIdx = all.indexOf(e);
+            // Remove rejected enrollment from the list entirely
+            all.splice(allIdx, 1);
+            saveEnrollments(all);
+            renderTables();
+            closeDetail();
+            alert(`Enrollment for ${e.data?.firstName || 'Learner'} rejected and deleted.`);
+          }
+        };
+
+        // Open detail panel
+        window.openDetail = function(enrollment, idx){
+          currentDetailIndex = idx;
+          const data = enrollment.data || {};
+          const first = data.firstName || data.first || data.fname || '';
+          const last = data.lastName || data.last || data.lname || '';
+          const displayName = [first, last].filter(Boolean).join(' ') || (data.fullName || data.name || '—');
+          const gmail = data.gmail || data.schoolEmail || data.email || '—';
+          const html = `
+            <div class="detail-row">
+              <div class="detail-field">
+                <label class="detail-label">Learner Name</label>
+                <div class="detail-value">${displayName}</div>
+              </div>
+              <div class="detail-field">
+                <label class="detail-label">Gmail Address</label>
+                <div class="detail-value">${gmail}</div>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-field">
+                <label class="detail-label">Birthdate</label>
+                <div class="detail-value">${data.birthdate || '—'}</div>
+              </div>
+              <div class="detail-field">
+                <label class="detail-label">Age</label>
+                <div class="detail-value">${data.age || '—'}</div>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-field">
+                <label class="detail-label">Birthdate</label>
+                <div class="detail-value">${data.birthdate || '—'}</div>
+              </div>
+              <div class="detail-field">
+                <label class="detail-label">Age</label>
+                <div class="detail-value">${data.age || '—'}</div>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-field">
+                <label class="detail-label">Sex</label>
+                <div class="detail-value">${data.sex || '—'}</div>
+              </div>
+              <div class="detail-field">
+                <label class="detail-label">Religion</label>
+                <div class="detail-value">${data.religion || '—'}</div>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-field">
+                <label class="detail-label">School Year</label>
+                <div class="detail-value">${data.schoolYear || '—'}</div>
+              </div>
+              <div class="detail-field">
+                <label class="detail-label">Grade Level</label>
+                <div class="detail-value">${data.gradeLevel || '—'}</div>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-field">
+                <label class="detail-label">School Email</label>
+                <div class="detail-value">${data.schoolEmail || '—'}</div>
+              </div>
+              <div class="detail-field">
+                <label class="detail-label">Gmail Address</label>
+                <div class="detail-value">${data.gmail || '—'}</div>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-field">
+                <label class="detail-label">Indigenous/4Ps Status</label>
+                <div class="detail-value">${data.indigenous4ps || '—'}</div>
+              </div>
+              <div class="detail-field">
+                <label class="detail-label">Parent/Guardian Name</label>
+                <div class="detail-value">${data.parentName || '—'}</div>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-field">
+                <label class="detail-label">Parent/Guardian Contact</label>
+                <div class="detail-value">${data.parentContact || '—'}</div>
+              </div>
+              <div class="detail-field">
+                <label class="detail-label">Submitted</label>
+                <div class="detail-value">${enrollment.sentAt ? new Date(enrollment.sentAt).toLocaleString() : '—'}</div>
+              </div>
+            </div>
+            <div class="detail-actions">
+              <button class="primary" onclick="acceptEnroll(${idx})">Accept Enrollment</button>
+              <button class="secondary" onclick="rejectEnroll(${idx})">Reject Enrollment</button>
+            </div>
+          `;
+          detailContent.innerHTML = html;
+          detailPanel.classList.add('show');
+        };
+
+        window.closeDetail = function(){
+          detailPanel.classList.remove('show');
+          currentDetailIndex = null;
+        };
+
+        // Check if admin is already logged in
+        function checkLogin(){
+          const session = sessionStorage.getItem('adminSession');
+          if(session){
+            showDashboard();
+          } else {
+            showLogin();
+          }
+        }
+
+        function showLogin(){
+          loginArea.style.display = 'block';
+          dashArea.style.display = 'none';
+        }
+
+        function showDashboard(){
+          loginArea.style.display = 'none';
+          dashArea.style.display = 'block';
+          renderTables();
+        }
+
+        // Login handler
+        loginForm.addEventListener('submit', async function(e){
+          e.preventDefault();
+          const email = (loginEmail.value || '').trim();
+          const pass = loginPass.value || '';
+          if(!email || !pass){ alert('Please enter email and password.'); return; }
+
+          // Hardcoded admin credentials
+          const ADMIN_EMAIL = 'jhonandreynavarra@gmail.com';
+          const ADMIN_PASSWORD = 'wakelet';
+
+          if(email !== ADMIN_EMAIL || pass !== ADMIN_PASSWORD){
+            alert('Invalid email or password.');
+            return;
+          }
+
+          // Login success
+          sessionStorage.setItem('adminSession', JSON.stringify({email, loginAt: new Date().toISOString()}));
+          showDashboard();
+        });
+
+        logoutBtn.addEventListener('click', function(){
+          sessionStorage.removeItem('adminSession');
+          loginEmail.value = '';
+          loginPass.value = '';
+          showLogin();
+        });
+
+        // Init
+        checkLogin();
+      })();
+    </script>
+  </body>
+</html>
